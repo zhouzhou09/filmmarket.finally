@@ -1,0 +1,14 @@
+[railway]
+  plugin = "node"
+
+[build]
+  builder = "NIXPACKS"
+  buildCommand = "npm install"
+  startCommand = "npm start"
+
+[deploy]
+  region = "singapore"
+  numReplicas = 1
+
+[environment]
+  PORT = "3000"
