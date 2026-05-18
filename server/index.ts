@@ -2130,6 +2130,80 @@ app.get('/api/search/hot', async (_req, res) => {
 // 自动运行数据库迁移（仅首次启动时执行）
 const runMigrations = async () => {
   try {
+    // 0. 创建核心基础表 users / products / favorites / swap_requests
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id VARCHAR(36) PRIMARY KEY,
+        email VARCHAR(200) NOT NULL UNIQUE,
+        password_hash VARCHAR(200) NOT NULL,
+        nickname VARCHAR(100) NOT NULL DEFAULT '',
+        avatar_url VARCHAR(500) DEFAULT '',
+        phone VARCHAR(20) DEFAULT '',
+        wechat_qr VARCHAR(500) DEFAULT '',
+        seller_level ENUM('normal','verified','premium') NOT NULL DEFAULT 'normal',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_email (email)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `).catch(() => {});
+    console.log('✅ users 表就绪');
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS products (
+        id VARCHAR(36) PRIMARY KEY,
+        user_id VARCHAR(36) NOT NULL,
+        title VARCHAR(200) NOT NULL,
+        description TEXT,
+        price DECIMAL(10,2) NOT NULL DEFAULT 0,
+        category VARCHAR(50) NOT NULL DEFAULT '',
+        brand VARCHAR(100) DEFAULT '',
+        model VARCHAR(100) DEFAULT '',
+        \`condition\` VARCHAR(10) NOT NULL DEFAULT '9',
+        type ENUM('sell','swap','free') NOT NULL DEFAULT 'sell',
+        images JSON,
+        views INT NOT NULL DEFAULT 0,
+        likes INT NOT NULL DEFAULT 0,
+        is_featured TINYINT(1) NOT NULL DEFAULT 0,
+        status ENUM('active','sold','deleted') NOT NULL DEFAULT 'active',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_user (user_id),
+        INDEX idx_category (category),
+        INDEX idx_status (status),
+        INDEX idx_created (created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `).catch(() => {});
+    console.log('✅ products 表就绪');
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS favorites (
+        id VARCHAR(36) PRIMARY KEY,
+        user_id VARCHAR(36) NOT NULL,
+        product_id VARCHAR(36) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE INDEX idx_user_product (user_id, product_id),
+        INDEX idx_user (user_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `).catch(() => {});
+    console.log('✅ favorites 表就绪');
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS swap_requests (
+        id VARCHAR(36) PRIMARY KEY,
+        product_id VARCHAR(36) NOT NULL,
+        requester_id VARCHAR(36) NOT NULL,
+        offering VARCHAR(500) DEFAULT '',
+        offering_image VARCHAR(500) DEFAULT '',
+        wanted_category JSON,
+        wanted_description TEXT,
+        status ENUM('pending','accepted','rejected') NOT NULL DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_product (product_id),
+        INDEX idx_requester (requester_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `).catch(() => {});
+    console.log('✅ swap_requests 表就绪');
+
     // 1. 添加微信二维码字段（MySQL 不支持 IF NOT EXISTS）
     try {
       await pool.query(`
