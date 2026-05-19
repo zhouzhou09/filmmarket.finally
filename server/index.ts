@@ -129,14 +129,17 @@ const upload = multer({
 
 // 数据库连接池
 const pool = mysql.createPool({
-  host: process.env.DB_HOST || process.env.host || 'rm-bp1c9272p58gcdz1u5o.mysql.rds.aliyuncs.com',
-  port: parseInt(process.env.DB_PORT || process.env.port || '3306'),
-  user: process.env.DB_USER || process.env.user || 'filmmarket',
-  password: process.env.DB_PASSWORD || process.env.password || 'filmmarket@2006923',
-  database: process.env.DB_NAME || process.env.database || 'filmmarket',
+  host: process.env.DB_HOST || 'rm-bp1c9272p58gcdz1u5o.mysql.rds.aliyuncs.com',
+  port: parseInt(process.env.DB_PORT || '3306'),
+  user: process.env.DB_USER || 'filmmarket',
+  password: process.env.DB_PASSWORD || 'filmmarket@2006923',
+  database: process.env.DB_NAME || 'filmmarket',
   waitForConnections: true,
   connectionLimit: 10,
+  connectTimeout: 30000,
+  ssl: { rejectUnauthorized: false },
 });
+
 
 // ==================== JWT 中间件 ====================
 
