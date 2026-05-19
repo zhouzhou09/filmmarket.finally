@@ -205,8 +205,13 @@ function parseProduct(row: any) {
 
 // ==================== 健康检查 ====================
 
-app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', time: new Date().toISOString() });
+app.get('/health', async (_req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.json({ status: 'ok', db: 'connected', time: new Date().toISOString() });
+  } catch (err: any) {
+    res.json({ status: 'ok', db: 'error', dbError: err.message, time: new Date().toISOString() });
+  }
 });
 
 app.get('/', (_req, res) => {
