@@ -136,6 +136,8 @@ const pool = mysql.createPool({
   database: process.env.DB_NAME || process.env.database || 'filmmarket',
   waitForConnections: true,
   connectionLimit: 10,
+  connectTimeout: 30000,
+  ssl: process.env.DB_SSL === 'false' ? undefined : { rejectUnauthorized: false },
 });
 
 // ==================== JWT 中间件 ====================
