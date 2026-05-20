@@ -129,16 +129,16 @@ const upload = multer({
 
 // 数据库连接池
 const pool = mysql.createPool({
-  host: process.env.DB_HOST || process.env.host || 'rm-bp1c9272p58gcdz1u5o.mysql.rds.aliyuncs.com',
-  port: parseInt(process.env.DB_PORT || process.env.port || '3306'),
-  user: process.env.DB_USER || process.env.user || 'filmmarket',
-  password: process.env.DB_PASSWORD || process.env.password || 'filmmarket@2006923',
-  database: process.env.DB_NAME || process.env.database || 'filmmarket',
+  host: process.env.DB_HOST || 'rm-bp1c9272p58gcdz1u5o.mysql.rds.aliyuncs.com',
+  port: parseInt(process.env.DB_PORT || '3306'),
+  user: process.env.DB_USER || 'filmmarket',
+  password: process.env.DB_PASSWORD || 'filmmarket@2006923',
+  database: process.env.DB_NAME || 'filmmarket',
   waitForConnections: true,
   connectionLimit: 10,
   connectTimeout: 30000,
-  ssl: process.env.DB_SSL === 'false' ? undefined : { rejectUnauthorized: false },
 });
+
 
 // ==================== JWT 中间件 ====================
 
@@ -207,12 +207,31 @@ function parseProduct(row: any) {
 
 // ==================== 健康检查 ====================
 
-app.get('/health', async (_req, res) => {
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok', time: new Date().toISOString() });
+});
+
+// ========== 临时调试接口 ==========
+app.post('/api/debug/register-test', async (req, res) => {
+  const steps: string[] = [];
   try {
-    await pool.query('SELECT 1');
-    res.json({ status: 'ok', db: 'connected', time: new Date().toISOString() });
-  } catch (err: any) {
-    res.json({ status: 'ok', db: 'error', dbError: err.message, time: new Date().toISOString() });
+    const hash = await bcrypt.hash('Test1234', 10);
+    steps.push('bcrypt OK');
+    const [rows] = await pool.query('SELECT 1 as test') as any[];
+    steps.push('db query OK');
+    const id = uuidv4();
+    await pool.query(
+      'INSERT INTO users (id, email, password_hash, nickname) VALUES (?, ?, ?, ?)',
+      [id, 'debug_' + Date.now() + '@test.com', hash, 'debug']
+    );
+    steps.push('db insert OK');
+    await pool.query('DELETE FROM users WHERE id = ?', [id]);
+    steps.push('db cleanup OK');
+    const token = jwt.sign({ id, email: 'test@test.com' }, JWT_SECRET, { expiresIn: '7d' });
+    steps.push('jwt OK');
+    res.json({ success: true, steps });
+  } catch (error: any) {
+    res.status(500).json({ success: false, steps, error: error.message, stack: error.stack });
   }
 });
 
@@ -224,42 +243,8 @@ app.get('/', (_req, res) => {
 
 // 注册
 app.post('/api/auth/register', async (req: Request, res: Response) => {
-  try {
-    const { email, password, nickname } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ error: '邮箱和密码不能为空' });
-    }
-    if (password.length < 6) {
-      return res.status(400).json({ error: '密码至少 6 位' });
-    }
-
-    // 检查邮箱是否已注册
-    const [existing] = await pool.query('SELECT id FROM users WHERE email = ?', [email]) as any[];
-    if (existing.length > 0) {
-      return res.status(400).json({ error: '该邮箱已被注册' });
-    }
-
-    const id = uuidv4();
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const defaultNickname = nickname || email.split('@')[0];
-
-    await pool.query(
-      'INSERT INTO users (id, email, password_hash, nickname) VALUES (?, ?, ?, ?)',
-      [id, email, hashedPassword, defaultNickname]
-    );
-
-    const token = jwt.sign({ id, email }, JWT_SECRET, { expiresIn: '7d' });
-
-    res.json({
-      token,
-      user: { id, email, nickname: defaultNickname },
-      message: '注册成功',
-    });
-  } catch (error) {
-    console.error('注册失败:', error);
-    res.status(500).json({ error: '注册失败，请稍后重试' });
-  }
+  return res.json({ debug: true, body: req.body });
+  
 });
 
 // 登录
@@ -2137,80 +2122,6 @@ app.get('/api/search/hot', async (_req, res) => {
 // 自动运行数据库迁移（仅首次启动时执行）
 const runMigrations = async () => {
   try {
-    // 0. 创建核心基础表 users / products / favorites / swap_requests
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id VARCHAR(36) PRIMARY KEY,
-        email VARCHAR(200) NOT NULL UNIQUE,
-        password_hash VARCHAR(200) NOT NULL,
-        nickname VARCHAR(100) NOT NULL DEFAULT '',
-        avatar_url VARCHAR(500) DEFAULT '',
-        phone VARCHAR(20) DEFAULT '',
-        wechat_qr VARCHAR(500) DEFAULT '',
-        seller_level ENUM('normal','verified','premium') NOT NULL DEFAULT 'normal',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        INDEX idx_email (email)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    `).catch(() => {});
-    console.log('✅ users 表就绪');
-
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS products (
-        id VARCHAR(36) PRIMARY KEY,
-        user_id VARCHAR(36) NOT NULL,
-        title VARCHAR(200) NOT NULL,
-        description TEXT,
-        price DECIMAL(10,2) NOT NULL DEFAULT 0,
-        category VARCHAR(50) NOT NULL DEFAULT '',
-        brand VARCHAR(100) DEFAULT '',
-        model VARCHAR(100) DEFAULT '',
-        \`condition\` VARCHAR(10) NOT NULL DEFAULT '9',
-        type ENUM('sell','swap','free') NOT NULL DEFAULT 'sell',
-        images JSON,
-        views INT NOT NULL DEFAULT 0,
-        likes INT NOT NULL DEFAULT 0,
-        is_featured TINYINT(1) NOT NULL DEFAULT 0,
-        status ENUM('active','sold','deleted') NOT NULL DEFAULT 'active',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        INDEX idx_user (user_id),
-        INDEX idx_category (category),
-        INDEX idx_status (status),
-        INDEX idx_created (created_at)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    `).catch(() => {});
-    console.log('✅ products 表就绪');
-
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS favorites (
-        id VARCHAR(36) PRIMARY KEY,
-        user_id VARCHAR(36) NOT NULL,
-        product_id VARCHAR(36) NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE INDEX idx_user_product (user_id, product_id),
-        INDEX idx_user (user_id)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    `).catch(() => {});
-    console.log('✅ favorites 表就绪');
-
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS swap_requests (
-        id VARCHAR(36) PRIMARY KEY,
-        product_id VARCHAR(36) NOT NULL,
-        requester_id VARCHAR(36) NOT NULL,
-        offering VARCHAR(500) DEFAULT '',
-        offering_image VARCHAR(500) DEFAULT '',
-        wanted_category JSON,
-        wanted_description TEXT,
-        status ENUM('pending','accepted','rejected') NOT NULL DEFAULT 'pending',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        INDEX idx_product (product_id),
-        INDEX idx_requester (requester_id)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    `).catch(() => {});
-    console.log('✅ swap_requests 表就绪');
-
     // 1. 添加微信二维码字段（MySQL 不支持 IF NOT EXISTS）
     try {
       await pool.query(`
