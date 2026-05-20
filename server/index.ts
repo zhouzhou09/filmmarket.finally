@@ -243,42 +243,8 @@ app.get('/', (_req, res) => {
 
 // 注册
 app.post('/api/auth/register', async (req: Request, res: Response) => {
-  try {
-    const { email, password, nickname } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ error: '邮箱和密码不能为空' });
-    }
-    if (password.length < 6) {
-      return res.status(400).json({ error: '密码至少 6 位' });
-    }
-
-    // 检查邮箱是否已注册
-    const [existing] = await pool.query('SELECT id FROM users WHERE email = ?', [email]) as any[];
-    if (existing.length > 0) {
-      return res.status(400).json({ error: '该邮箱已被注册' });
-    }
-
-    const id = uuidv4();
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const defaultNickname = nickname || email.split('@')[0];
-
-    await pool.query(
-      'INSERT INTO users (id, email, password_hash, nickname) VALUES (?, ?, ?, ?)',
-      [id, email, hashedPassword, defaultNickname]
-    );
-
-    const token = jwt.sign({ id, email }, JWT_SECRET, { expiresIn: '7d' });
-
-    res.json({
-      token,
-      user: { id, email, nickname: defaultNickname },
-      message: '注册成功',
-    });
-  } catch (error) {
-    console.error('注册失败:', error);
-    res.status(500).json({ error: '注册失败，请稍后重试' });
-  }
+  return res.json({ debug: true, body: req.body });
+  
 });
 
 // 登录
