@@ -211,6 +211,30 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
 });
 
+// ========== 临时调试接口 ==========
+app.post('/api/debug/register-test', async (req, res) => {
+  const steps: string[] = [];
+  try {
+    const hash = await bcrypt.hash('Test1234', 10);
+    steps.push('bcrypt OK');
+    const [rows] = await pool.query('SELECT 1 as test') as any[];
+    steps.push('db query OK');
+    const id = uuidv4();
+    await pool.query(
+      'INSERT INTO users (id, email, password_hash, nickname) VALUES (?, ?, ?, ?)',
+      [id, 'debug_' + Date.now() + '@test.com', hash, 'debug']
+    );
+    steps.push('db insert OK');
+    await pool.query('DELETE FROM users WHERE id = ?', [id]);
+    steps.push('db cleanup OK');
+    const token = jwt.sign({ id, email: 'test@test.com' }, JWT_SECRET, { expiresIn: '7d' });
+    steps.push('jwt OK');
+    res.json({ success: true, steps });
+  } catch (error: any) {
+    res.status(500).json({ success: false, steps, error: error.message, stack: error.stack });
+  }
+});
+
 app.get('/', (_req, res) => {
   res.json({ message: 'FilmMarket API Server', version: '1.0.0' });
 });
