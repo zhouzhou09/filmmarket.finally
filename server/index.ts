@@ -243,8 +243,49 @@ app.get('/', (_req, res) => {
 
 // 注册
 app.post('/api/auth/register', async (req: Request, res: Response) => {
-  return res.json({ debug: true, body: req.body });
-  
+  try {
+    const { nickname, email, password } = req.body;
+
+    if (!nickname || !email || !password) {
+      return res.status(400).json({ error: '昵称、邮箱和密码不能为空' });
+    }
+
+    // 检查邮箱是否已存在
+    const [existing] = await pool.query('SELECT id FROM users WHERE email = ?', [email]) as any[];
+    if (existing.length > 0) {
+      return res.status(409).json({ error: '该邮箱已被注册' });
+    }
+
+    // 加密密码
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    // 生成用户ID
+    const id = uuidv4();
+
+    // 插入数据库
+    await pool.query(
+      'INSERT INTO users (id, email, password_hash, nickname) VALUES (?, ?, ?, ?)',
+      [id, email, passwordHash, nickname]
+    );
+
+    // 生成 JWT token
+    const token = jwt.sign({ id, email }, JWT_SECRET, { expiresIn: '7d' });
+
+    res.status(201).json({
+      token,
+      user: {
+        id,
+        email,
+        nickname,
+        avatar_url: null,
+        bio: null,
+        location: null
+      }
+    });
+  } catch (error: any) {
+    console.error('注册失败:', error);
+    res.status(500).json({ error: '注册失败，请稍后重试' });
+  }
 });
 
 // 登录
