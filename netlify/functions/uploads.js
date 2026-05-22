@@ -1,12 +1,10 @@
 const BACKEND_URL = "http://47.110.90.38:3001";
 
 exports.handler = async (event) => {
-  // Netlify strips the function path, so event.path is like "/auth/register"
-  // We need to add back the "/api" prefix
-  const backendUrl = BACKEND_URL + "/api" + event.path + (event.queryStringParameters ? '?' + new URLSearchParams(event.queryStringParameters).toString() : '');
+  const backendUrl = BACKEND_URL + "/uploads" + event.path + (event.queryStringParameters ? '?' + new URLSearchParams(event.queryStringParameters).toString() : '');
 
   const headers = {};
-  const passHeaders = ['content-type', 'authorization', 'x-requested-with', 'cookie'];
+  const passHeaders = ['content-type', 'authorization'];
   for (const h of passHeaders) {
     const v = event.headers[h] || event.headers[h.toLowerCase()];
     if (v) headers[h] = v;
@@ -25,16 +23,12 @@ exports.handler = async (event) => {
     const response = await fetch(backendUrl, options);
     const data = await response.text();
 
-    const respHeaders = {
-      'Content-Type': response.headers.get('content-type') || 'application/json',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS, PATCH',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
-    };
-
     return {
       statusCode: response.status,
-      headers: respHeaders,
+      headers: {
+        'Content-Type': response.headers.get('content-type') || 'application/octet-stream',
+        'Access-Control-Allow-Origin': '*',
+      },
       body: data,
     };
   } catch (error) {
