@@ -157,6 +157,7 @@ function AppContent() {
     <div className="min-h-screen bg-paper">
       {showNavbar && <Navbar currentPage={currentPage} onNavigate={handleNavigate} />}
       {renderPage()}
+      <div className="text-center text-xs text-gray-400 py-2">build-v2-0522</div>
     </div>
   );
 }
