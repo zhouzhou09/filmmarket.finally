@@ -55,13 +55,14 @@ CREATE TABLE IF NOT EXISTS favorites (
 
 CREATE TABLE IF NOT EXISTS swap_requests (
   id VARCHAR(36) PRIMARY KEY,
-  product_id VARCHAR(36) NOT NULL,
+  product_id VARCHAR(36) DEFAULT NULL,
   requester_id VARCHAR(36) NOT NULL,
   offering VARCHAR(500) DEFAULT '',
   offering_image VARCHAR(500) DEFAULT '',
   wanted_category JSON,
   wanted_description TEXT,
-  status ENUM('pending','accepted','rejected') NOT NULL DEFAULT 'pending',
+  message TEXT,
+  status ENUM('open','accepted','rejected') NOT NULL DEFAULT 'open',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_product (product_id),
   INDEX idx_requester (requester_id)

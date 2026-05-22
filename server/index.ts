@@ -843,7 +843,7 @@ app.get('/api/stats', async (_req, res) => {
   try {
     const [userCount] = await pool.query('SELECT COUNT(*) as count FROM users') as any[];
     const [productCount] = await pool.query("SELECT COUNT(*) as count FROM products WHERE status = 'active'") as any[];
-    const [swapCount] = await pool.query("SELECT COUNT(*) as count FROM swap_requests WHERE status = 'pending'") as any[];
+    const [swapCount] = await pool.query("SELECT COUNT(*) as count FROM swap_requests WHERE status = 'open'") as any[];
 
     res.json({
       users: userCount[0].count,
@@ -873,6 +873,13 @@ app.post('/api/admin/migrate', async (_req, res) => {
       } catch (e: any) {
         console.log('ℹ️ swap_requests 字段:', e.message);
       }
+    }
+    // message 字段（TEXT 不能有 DEFAULT，单独处理）
+    try {
+      await pool.query('ALTER TABLE swap_requests ADD COLUMN IF NOT EXISTS message TEXT');
+      console.log('✅ swap_requests: message');
+    } catch (e: any) {
+      console.log('ℹ️ swap_requests message:', e.message);
     }
 
     // 强制添加微信二维码字段（如果已存在会报错，但会被捕获）
