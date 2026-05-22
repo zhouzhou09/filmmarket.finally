@@ -4,20 +4,3 @@
 
 [build.environment]
   NODE_VERSION = "20"
-
-# API 和上传请求代理到后端（解决 Mixed Content 问题）
-[[redirects]]
-  from = "/api/*"
-  to = "http://47.110.90.38:3001/api/:splat"
-  status = 200
-
-[[redirects]]
-  from = "/uploads/*"
-  to = "http://47.110.90.38:3001/uploads/:splat"
-  status = 200
-
-# SPA fallback
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
