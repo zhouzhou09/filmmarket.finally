@@ -3,7 +3,7 @@ const BACKEND_URL = "http://47.110.90.38:3001";
 exports.handler = async (event) => {
   // Netlify strips the function path, so event.path is like "/auth/register"
   // We need to add back the "/api" prefix
-  const backendUrl = BACKEND_URL + "/api" + event.path + (event.queryStringParameters ? '?' + new URLSearchParams(event.queryStringParameters).toString() : '');
+  const backendUrl = BACKEND_URL + event.path + (event.queryStringParameters ? '?' + new URLSearchParams(event.queryStringParameters).toString() : '');
 
   const headers = {};
   const passHeaders = ['content-type', 'authorization', 'x-requested-with', 'cookie'];

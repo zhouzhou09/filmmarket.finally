@@ -1,7 +1,7 @@
 const BACKEND_URL = "http://47.110.90.38:3001";
 
 exports.handler = async (event) => {
-  const backendUrl = BACKEND_URL + "/uploads" + event.path + (event.queryStringParameters ? '?' + new URLSearchParams(event.queryStringParameters).toString() : '');
+  const backendUrl = BACKEND_URL + event.path + (event.queryStringParameters ? '?' + new URLSearchParams(event.queryStringParameters).toString() : '');
 
   const headers = {};
   const passHeaders = ['content-type', 'authorization'];
