@@ -4,21 +4,3 @@
 
 [build.environment]
   NODE_VERSION = "20"
-
-# API 请求代理到 Netlify Function
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/api/:splat"
-  status = 200
-
-# 上传文件代理到 Netlify Function
-[[redirects]]
-  from = "/uploads/*"
-  to = "/.netlify/functions/uploads/:splat"
-  status = 200
-
-# SPA fallback
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
