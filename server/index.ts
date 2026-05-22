@@ -14,6 +14,8 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import fs from 'fs';
+import https from 'https';
+import http from 'http';
 import OSS from 'ali-oss';
 
 // 获取当前文件路径
@@ -235,8 +237,13 @@ app.post('/api/debug/register-test', async (req, res) => {
   }
 });
 
+const distDirRoot = path.join(__dirname, '../dist');
 app.get('/', (_req, res) => {
-  res.json({ message: 'FilmMarket API Server', version: '1.0.0' });
+  if (fs.existsSync(distDirRoot)) {
+    res.sendFile(path.join(distDirRoot, 'index.html'));
+  } else {
+    res.json({ message: 'FilmMarket API Server', version: '1.0.0' });
+  }
 });
 
 // ==================== 认证 API ====================
@@ -2747,11 +2754,54 @@ app.put('/api/notification-settings', authMiddleware, async (req: AuthRequest, r
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`
-🚀 FilmMarket API Server 运行中！
-   地址: http://localhost:${PORT}
-   健康检查: http://localhost:${PORT}/health
-   商品列表: http://localhost:${PORT}/api/products
-  `);
+// 前端静态文件服务（生产环境）
+const distDir = path.join(__dirname, '../dist');
+if (fs.existsSync(distDir)) {
+  app.use(express.static(distDir));
+  // SPA fallback - 所有非 API 路由返回 index.html（用正则避免 path-to-regexp 兼容问题）
+  const spaFallback = (req: any, res: any) => {
+    res.sendFile(path.join(distDir, 'index.html'));
+  };
+  app.get(/^(?!\/api|\/uploads).*/, spaFallback);
+  console.log('📁 前端静态文件服务已启用:', distDir);
+} else {
+  console.log('⚠️ 前端 dist 目录不存在，跳过静态文件服务');
+}
+
+// HTTPS 配置
+const SSL_KEY_PATH = process.env.SSL_KEY_PATH || path.join(__dirname, '../nginx-1.26.3/ssl/cert.pfx');
+const SSL_PASSWORD = process.env.SSL_PASSWORD || '123456';
+const ENABLE_HTTPS = process.env.ENABLE_HTTPS !== 'false'; // 默认启用HTTPS
+
+// 创建 HTTP 服务器
+const httpServer = http.createServer(app);
+
+// 创建 HTTPS 服务器（如果证书存在）
+let httpsServer: https.Server | null = null;
+
+if (ENABLE_HTTPS && fs.existsSync(SSL_KEY_PATH)) {
+  try {
+    const pfx = fs.readFileSync(SSL_KEY_PATH);
+    const httpsOptions: https.ServerOptions = {
+      pfx,
+      passphrase: SSL_PASSWORD,
+    };
+    httpsServer = https.createServer(httpsOptions, app);
+    console.log('🔐 HTTPS 证书加载成功');
+  } catch (err) {
+    console.error('❌ HTTPS 证书加载失败:', err);
+  }
+}
+
+// 启动服务器
+httpServer.listen(PORT, () => {
+  console.log(`🚀 FilmMarket API Server 运行中！`);
+  console.log(`   HTTP 地址: http://localhost:${PORT}`);
+  console.log(`   HTTPS 地址: https://localhost`);
 });
+
+if (httpsServer) {
+  httpsServer.listen(443, () => {
+    console.log(`🔐 HTTPS 已启用: https://api.filmmarket.top`);
+  });
+}

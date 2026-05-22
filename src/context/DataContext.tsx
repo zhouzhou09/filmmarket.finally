@@ -115,14 +115,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
 
     setCurrentUser({
-      id: authUser.id,
+      id: String(authUser.id),
       name: authUser.nickname || authUser.email?.split('@')[0] || '用户',
-      avatar: authUser.avatar_url || authUser.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(authUser.email || authUser.id)}&backgroundColor=8B2323,DAA520&textColor=ffffff`,
+      avatar: authUser.avatar_url || (authUser as any).avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(authUser.email || String(authUser.id))}&backgroundColor=8B2323,DAA520&textColor=ffffff`,
       rating,
       reviewCount,
       badge: (authUser.seller_level as any) || 'none',
-      location: authUser.location || '',
-      joinedYear: authUser.joined_year || new Date().getFullYear(),
+      location: (authUser as any).location || '',
+      joinedYear: (authUser as any).joined_year || new Date().getFullYear(),
     });
   }, []);
 

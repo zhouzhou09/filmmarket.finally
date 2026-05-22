@@ -1,6 +1,6 @@
 // Product types
-export type ProductCategory = 'rangefinder' | 'slr' | 'tlr' | 'point-and-shoot' | 'film' | 'lens' | 'accessory';
-export type Condition = 'N' | '9.5' | '9' | '8' | '7' | 'P';
+export type ProductCategory = 'rangefinder' | 'slr' | 'tlr' | 'point-and-shoot' | 'film' | 'lens' | 'accessory' | 'ccd';
+export type Condition = 'N' | '9.5' | '9' | '8' | '8.5' | '7' | 'P';
 export type ListingType = 'sell' | 'swap' | 'both';
 
 // Supabase 数据库类型

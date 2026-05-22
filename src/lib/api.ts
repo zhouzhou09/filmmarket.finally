@@ -1,6 +1,8 @@
 import type { UserAddress, UserPaymentMethod, NotificationSettings, PaymentType } from '../types';
 
-const BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+export type { UserAddress, UserPaymentMethod, NotificationSettings, PaymentType };
+
+const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3001';
 
 export interface ApiUser {
   id: number;
