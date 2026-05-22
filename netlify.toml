@@ -5,17 +5,19 @@
 [build.environment]
   NODE_VERSION = "20"
 
-# API 请求代理到阿里云后端
+# API 请求代理到阿里云后端（force 确保覆盖 SPA fallback）
 [[redirects]]
   from = "/api/*"
   to = "http://47.110.90.38:3001/api/:splat"
   status = 200
+  force = true
 
 # 上传文件代理到阿里云后端
 [[redirects]]
   from = "/uploads/*"
   to = "http://47.110.90.38:3001/uploads/:splat"
   status = 200
+  force = true
 
 # SPA fallback：所有非 API 请求返回 index.html
 [[redirects]]
