@@ -1,3 +1,4 @@
+/test  https://www.google.com  302
 /api/*  /.netlify/functions/api/:splat  200
 /uploads/*  /.netlify/functions/uploads/:splat  200
 /*  /index.html  200
